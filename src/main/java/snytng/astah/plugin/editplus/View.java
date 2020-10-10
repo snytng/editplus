@@ -1079,7 +1079,7 @@ ProjectEventListener
 	}
 
 	/**
-	 * 要素の選択が変更されたら、クラス数の表示を更新する
+	 * 要素の選択が変更されたら表示を更新する
 	 */
 	@Override
 	public void entitySelectionChanged(IEntitySelectionEvent arg0) {
