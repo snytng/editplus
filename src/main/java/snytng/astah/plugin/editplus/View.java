@@ -1016,9 +1016,12 @@ ProjectEventListener
 
 		JPanel centerPanel = new JPanel();
 		centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-		centerPanel.setAlignmentX(LEFT_ALIGNMENT);
-		centerPanel.add(getEditRelationsPanel());
-		centerPanel.add(getEditElementsPanel());
+		JPanel editRelationPanel = getEditRelationsPanel();
+		editRelationPanel.setAlignmentX(LEFT_ALIGNMENT);
+		centerPanel.add(editRelationPanel);
+		JPanel editElementsPanel = getEditElementsPanel();
+		editElementsPanel.setAlignmentX(LEFT_ALIGNMENT);
+		centerPanel.add(editElementsPanel);
 
 		JPanel erPanel = new JPanel();
 		erPanel.setLayout(new BorderLayout());
@@ -1034,37 +1037,41 @@ ProjectEventListener
 		fPanel.setLayout(new BoxLayout(fPanel, BoxLayout.X_AXIS));
 
 		// 位置変更
-		JButton bFlipVertical = new JButton("上下反転");
+		JButton bFlipVertical = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.reverseVertical"));
 		bFlipVertical.addActionListener(getFlipActionListener(FlipDirection.VERTICAL));
-		JButton bFlipHorizontal = new JButton("左右反転");
+		JButton bFlipHorizontal = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.reverseHorizontal"));
 		bFlipHorizontal.addActionListener(getFlipActionListener(FlipDirection.HORIZONTAL));
-		JButton bClockwiseRotation90 = new JButton("右90度回転");
+		JButton bClockwiseRotation90 = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.rotateRight90degrees"));
 		bClockwiseRotation90.addActionListener(getRotationActionListener());
 		// 選択変更
-		JButton bSelectClass = new JButton("クラス選択");
+		JButton bSelectClass = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.selectClasses"));
 		bSelectClass.addActionListener(getSelectClassListener());
 		//　関連名
-		JButton bAssociationName = new JButton("関連名整列");
+		JButton bAssociationName = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.alignRelationName"));
 		bAssociationName.addActionListener(getAssociationNameActionListener());
 		// 色ピッカー
-		JButton bColorPicker = new JButton("色スポイト");
+		JButton bColorPicker = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.pickUpColor"));
 		bColorPicker.addActionListener(getColorPickerActionListener());
 		// ノート活用
-		JButton bSyncColor = new JButton("ノート色反映");
+		JButton bSyncColor = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.syncNoteColor"));
 		bSyncColor.addActionListener(getSyncColorActionListener());
-		JButton bAddStereotype = new JButton("ノートステレオタイプ+");
+		JButton bAddStereotype = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.addNoteStereotype"));
 		bAddStereotype.addActionListener(getSyncStereotypeActionListener(true));
-		JButton bRemoveStereotype = new JButton("ノートステレオタイプ-");
+		JButton bRemoveStereotype = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.removeNoteStereotype"));
 		bRemoveStereotype.addActionListener(getSyncStereotypeActionListener(false));
 
 		fPanel.add(new JLabel(VIEW_BUNDLE.getString("paneTitleText.editElements")));
 		fPanel.add(bFlipVertical);
 		fPanel.add(bFlipHorizontal);
 		fPanel.add(bClockwiseRotation90);
+		fPanel.add(getSeparator());
 		fPanel.add(bSelectClass);
+		fPanel.add(getSeparator());
 		fPanel.add(bAssociationName);
+		fPanel.add(getSeparator());
 		fPanel.add(bColorPicker);
 		fPanel.add(bSyncColor);
+		fPanel.add(getSeparator());
 		fPanel.add(bAddStereotype);
 		fPanel.add(bRemoveStereotype);
 
