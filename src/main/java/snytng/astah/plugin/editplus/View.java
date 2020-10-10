@@ -120,6 +120,7 @@ ProjectEventListener
 	 */
 	JLabel  erLabel = null;
 	JButton bNN = new JButton("--x--(U)");
+	JButton bAC = new JButton("◇◆-◆◇(J)");
 	JButton bAN = new JButton("◇---(J)");
 	JButton bCN = new JButton("◆---(K)");
 	JButton bNA = new JButton("---◇(L)");
@@ -142,6 +143,7 @@ ProjectEventListener
 
 	private void setButtonActionListeners() {
 		bNN.addActionListener(getAggregationCompositeActionListener(false, false, false, false));
+		bAC.addActionListener(getAggregationCompositeActionListener());
 		bAN.addActionListener(getAggregationCompositeActionListener(true , false, false, false));
 		bCN.addActionListener(getAggregationCompositeActionListener(false, true , false, false));
 		bNA.addActionListener(getAggregationCompositeActionListener(false, false, true , false));
@@ -160,6 +162,7 @@ ProjectEventListener
 
 	private void setButtonToolTipTexts(){
 		bNN.setToolTipText(VIEW_BUNDLE.getString("buttonToolTipText.deleteAggregationComposite"));
+		bAC.setToolTipText(VIEW_BUNDLE.getString("buttonToolTipText.modifyAssociation"));
 		bAN.setToolTipText(VIEW_BUNDLE.getString("buttonToolTipText.leftAggregation"));
 		bCN.setToolTipText(VIEW_BUNDLE.getString("buttonToolTipText.leftComposite"));
 		bNA.setToolTipText(VIEW_BUNDLE.getString("buttonToolTipText.rightAggregation"));
@@ -181,10 +184,11 @@ ProjectEventListener
 
 	private void setMnemonicButtons(){
 		bNN.setMnemonic(KeyEvent.VK_U);
-		bAN.setMnemonic(KeyEvent.VK_J);
-		bCN.setMnemonic(KeyEvent.VK_K);
-		bNA.setMnemonic(KeyEvent.VK_L);
-		bNC.setMnemonic(KeyEvent.VK_SEMICOLON);
+		bAC.setMnemonic(KeyEvent.VK_J);
+		//bAN.setMnemonic(KeyEvent.VK_J);
+		//bCN.setMnemonic(KeyEvent.VK_K);
+		//bNA.setMnemonic(KeyEvent.VK_L);
+		//bNC.setMnemonic(KeyEvent.VK_SEMICOLON);
 		bGE.setMnemonic(KeyEvent.VK_G);
 		bDE.setMnemonic(KeyEvent.VK_Y);
 		bAS.setMnemonic(KeyEvent.VK_R);
@@ -202,6 +206,7 @@ ProjectEventListener
 
 	private void setEnabledButtons(boolean b){
 		bNN.setEnabled(b);
+		bAC.setEnabled(b);
 		bAN.setEnabled(b);
 		bCN.setEnabled(b);
 		bNA.setEnabled(b);
@@ -244,10 +249,11 @@ ProjectEventListener
 
 		bPanel.add(getSeparator());
 		bPanel.add(bNN);
-		bPanel.add(bAN);
-		bPanel.add(bCN);
-		bPanel.add(bNA);
-		bPanel.add(bNC);
+		bPanel.add(bAC);
+		//bPanel.add(bAN);
+		//bPanel.add(bCN);
+		//bPanel.add(bNA);
+		//bPanel.add(bNC);
 
 		bPanel.add(getSeparator());
 		bPanel.add(bMX);
@@ -267,43 +273,63 @@ ProjectEventListener
 	}
 
 
-	private ActionListener getAggregationCompositeActionListener(final boolean bla, final boolean blc, final boolean bra, final boolean brc){
-		return event-> {
-			IElement e = selectedPresentation.getModel();
-
-			// 選択された関連の種類を変更
-			if (e instanceof IAssociation){
-				IAssociation a = (IAssociation)e;
-				IAttribute[] att = a.getMemberEnds();
-
-				try {
-					TransactionManager.beginTransaction();
-					if(att[0].isAggregate() != bla){
-						att[0].setAggregation();
-					}
-					if(att[0].isComposite() != blc){
-						att[0].setComposite();
-					}
-					if(att[1].isAggregate() != bra){
-						att[1].setAggregation();
-					}
-					if(att[1].isComposite() != brc){
-						att[1].setComposite();
-					}
-					TransactionManager.endTransaction();
-				} catch (InvalidEditingException iee) {
-					TransactionManager.abortTransaction();
-				}
-			}
-
-			// 関連名の読み上げを更新
-			String rel = RelationReader.printRelation(e);
-			erLabel.setText(rel);
+	private int modiyAssociationIndex = 0;
+	private boolean[][] associations = new boolean[][]{
+		{false, false, false, false},
+		{true,  false, false, false},
+		{false, false, true,  false},
+		{false, true,  false, false},
+		{false, false, false, true }
+	};
+	private ActionListener getAggregationCompositeActionListener() {
+		return event -> {
+			modiyAssociationIndex++;
+			boolean[] bs = associations[modiyAssociationIndex % associations.length];
+			modifyAssociation(bs[0], bs[1], bs[2], bs[3]);
 		};
 	}
 
+	private ActionListener getAggregationCompositeActionListener(final boolean bla, final boolean blc, final boolean bra, final boolean brc){
+		return event -> {
+			modifyAssociation(bla, blc, bra, brc);
+		};
+	}
+
+	private void modifyAssociation(final boolean bla, final boolean blc, final boolean bra, final boolean brc) {
+		IElement e = selectedPresentation.getModel();
+
+		// 選択された関連の種類を変更
+		if (e instanceof IAssociation){
+			IAssociation a = (IAssociation)e;
+			IAttribute[] att = a.getMemberEnds();
+
+			try {
+				TransactionManager.beginTransaction();
+				if(att[0].isAggregate() != bla){
+					att[0].setAggregation();
+				}
+				if(att[0].isComposite() != blc){
+					att[0].setComposite();
+				}
+				if(att[1].isAggregate() != bra){
+					att[1].setAggregation();
+				}
+				if(att[1].isComposite() != brc){
+					att[1].setComposite();
+				}
+				TransactionManager.endTransaction();
+			} catch (InvalidEditingException iee) {
+				TransactionManager.abortTransaction();
+			}
+		}
+
+		// 関連名の読み上げを更新
+		String rel = RelationReader.printRelation(e);
+		erLabel.setText(rel);
+	}
+
 	private ActionListener getGeneralizationActionListener(){
-		return event-> {
+		return event -> {
 			IElement e = selectedPresentation.getModel();
 
 			// 選択された関連の種類を変更
@@ -360,7 +386,7 @@ ProjectEventListener
 	}
 
 	private ActionListener getDependencyActionListener(){
-		return event-> {
+		return event -> {
 			IElement e = selectedPresentation.getModel();
 
 			// 選択された関連の種類を変更
@@ -418,7 +444,7 @@ ProjectEventListener
 	}
 
 	private ActionListener getAssociationActionListener(){
-		return event-> {
+		return event -> {
 			IElement e = selectedPresentation.getModel();
 
 			// 選択された関連の種類を変更
@@ -464,7 +490,7 @@ ProjectEventListener
 	};
 
 	private ActionListener getMultiplicityActionListener(final boolean off, final boolean left){
-		return event-> {
+		return event -> {
 			IElement e = selectedPresentation.getModel();
 
 			// 選択された関連の種類を変更
@@ -504,7 +530,7 @@ ProjectEventListener
 			"Unspecified","Navigable","Non_Navigable"
 	};
 	private ActionListener getNavigabilityActionListener(final boolean off, final boolean left){
-		return event-> {
+		return event -> {
 			IElement e = selectedPresentation.getModel();
 
 			// 選択された関連の種類を変更
@@ -563,7 +589,7 @@ ProjectEventListener
 
 	@SuppressWarnings("unchecked")
 	private ActionListener getFlipActionListener (FlipDirection flipDirection){
-		return event-> {
+		return event -> {
 			// 選択要素の取得
 			// 今選択している図のタイプを取得する
 			IViewManager vm;
@@ -677,7 +703,7 @@ ProjectEventListener
 	}
 
 	private ActionListener getRotationActionListener (){
-		return event-> {
+		return event -> {
 			// 選択要素の取得
 			// 今選択している図のタイプを取得する
 			IViewManager vm;
@@ -774,7 +800,7 @@ ProjectEventListener
 	}
 
 	private ActionListener getSelectClassListener (){
-		return event-> {
+		return event -> {
 			// 選択要素の取得
 			// 今選択している図のタイプを取得する
 			IViewManager vm;
@@ -800,7 +826,7 @@ ProjectEventListener
 
 
 	private ActionListener getAssociationNameActionListener(){
-		return event-> {
+		return event -> {
 
 			IViewManager vm;
 			try {
@@ -866,7 +892,7 @@ ProjectEventListener
 	private static final String LINE_COLOR = "line.color";
 
 	private ActionListener getSyncColorActionListener(){
-		return event-> {
+		return event -> {
 			// 選択要素の取得
 			IViewManager vm;
 			try {
@@ -905,7 +931,7 @@ ProjectEventListener
 
 	private transient IPresentation[] selectedPresentations = null;
 	private ActionListener getColorPickerActionListener(){
-		return event-> {
+		return event -> {
 			// 選択要素の取得
 			// 今選択している図のタイプを取得する
 			IViewManager vm;
@@ -929,7 +955,7 @@ ProjectEventListener
 	}
 
 	private ActionListener getSyncStereotypeActionListener(boolean add){
-		return event-> {
+		return event -> {
 			// 選択要素の取得
 			// 今選択している図のタイプを取得する
 			IViewManager vm;
