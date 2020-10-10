@@ -120,24 +120,24 @@ ProjectEventListener
 	 */
 	JLabel  erLabel = null;
 	JButton bNN = new JButton("--x--(U)");
-	JButton bAC = new JButton("◇◆-◆◇(J)");
-	JButton bAN = new JButton("◇---(J)");
-	JButton bCN = new JButton("◆---(K)");
-	JButton bNA = new JButton("---◇(L)");
-	JButton bNC = new JButton("---◆(;)");
+	JButton bAC = new JButton("◇◆-◆◇(I)");
+	JButton bAN = new JButton("◇---()");
+	JButton bCN = new JButton("◆---()");
+	JButton bNA = new JButton("---◇()");
+	JButton bNC = new JButton("---◆()");
 
 	JButton bGE = new JButton("◁---▷(G)");
-	JButton bDE = new JButton("<- ->(Y)");
+	JButton bDE = new JButton("<- ->(B)");
 
-	JButton bAS = new JButton("◀   ▶(R)");
+	JButton bAS = new JButton("◀   ▶(N)");
 
-	JButton bMX = new JButton("--x--(B)");
-	JButton bML = new JButton("m----(N)");
-	JButton bMR = new JButton("----m(M)");
+	JButton bMX = new JButton("--x--(J)");
+	JButton bML = new JButton("m----(K)");
+	JButton bMR = new JButton("----m(L)");
 
-	JButton bNX = new JButton("--x--(,)");
-	JButton bNL = new JButton("<----(.)");
-	JButton bNR = new JButton("---->(/)");
+	JButton bNX = new JButton("--x--(M)");
+	JButton bNL = new JButton("<----(,)");
+	JButton bNR = new JButton("---->(.)");
 
 	JButton bCT = new JButton("><(C)");
 
@@ -184,22 +184,22 @@ ProjectEventListener
 
 	private void setMnemonicButtons(){
 		bNN.setMnemonic(KeyEvent.VK_U);
-		bAC.setMnemonic(KeyEvent.VK_J);
-		//bAN.setMnemonic(KeyEvent.VK_J);
-		//bCN.setMnemonic(KeyEvent.VK_K);
-		//bNA.setMnemonic(KeyEvent.VK_L);
-		//bNC.setMnemonic(KeyEvent.VK_SEMICOLON);
+		bAC.setMnemonic(KeyEvent.VK_I);
+		//bAN.setMnemonic(KeyEvent.VK_);
+		//bCN.setMnemonic(KeyEvent.VK_);
+		//bNA.setMnemonic(KeyEvent.VK_);
+		//bNC.setMnemonic(KeyEvent.VK_);
 		bGE.setMnemonic(KeyEvent.VK_G);
-		bDE.setMnemonic(KeyEvent.VK_Y);
-		bAS.setMnemonic(KeyEvent.VK_R);
+		bDE.setMnemonic(KeyEvent.VK_B);
+		bAS.setMnemonic(KeyEvent.VK_N);
 
-		bMX.setMnemonic(KeyEvent.VK_B);
-		bML.setMnemonic(KeyEvent.VK_N);
-		bMR.setMnemonic(KeyEvent.VK_M);
+		bMX.setMnemonic(KeyEvent.VK_J);
+		bML.setMnemonic(KeyEvent.VK_K);
+		bMR.setMnemonic(KeyEvent.VK_L);
 
-		bNX.setMnemonic(KeyEvent.VK_COMMA);
-		bNL.setMnemonic(KeyEvent.VK_PERIOD);
-		bNR.setMnemonic(KeyEvent.VK_SLASH);
+		bNX.setMnemonic(KeyEvent.VK_M);
+		bNL.setMnemonic(KeyEvent.VK_COMMA);
+		bNR.setMnemonic(KeyEvent.VK_PERIOD);
 
 		bCT.setMnemonic(KeyEvent.VK_C);
 	}
