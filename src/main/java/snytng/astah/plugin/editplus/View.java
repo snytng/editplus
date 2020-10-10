@@ -250,10 +250,6 @@ ProjectEventListener
 		bPanel.add(bNC);
 
 		bPanel.add(getSeparator());
-		bPanel.add(bGE);
-		bPanel.add(bDE);
-
-		bPanel.add(getSeparator());
 		bPanel.add(bMX);
 		bPanel.add(bML);
 		bPanel.add(bMR);
@@ -262,6 +258,10 @@ ProjectEventListener
 		bPanel.add(bNX);
 		bPanel.add(bNL);
 		bPanel.add(bNR);
+
+		bPanel.add(getSeparator());
+		bPanel.add(bGE);
+		bPanel.add(bDE);
 
 		return bPanel;
 	}
@@ -956,11 +956,14 @@ ProjectEventListener
 				.map(IPresentation::getModel)
 				.forEach(e ->
 				{
+					boolean hasStereotype = Arrays.asList(e.getStereotypes()).contains(stereotype);
 					try{
-						if(add){
+						if(add && ! hasStereotype) {
 							e.addStereotype(stereotype);
-						}else {
+						} else if(! add && hasStereotype) {
 							e.removeStereotype(stereotype);
+						} else {
+							// do nothing
 						}
 
 					}catch (InvalidEditingException ex) {
