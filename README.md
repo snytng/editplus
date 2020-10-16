@@ -5,7 +5,7 @@
 反転、回転、選択など、標準機能にはない、よくある操作を簡単に実現できます。
 
 # ダウンロード
-[ここ](https://github.com/snytng/editplus/blob/master/target/editplus-0.1.1.jar)からダウンロードして下さい。
+[ここ](https://github.com/snytng/editplus/raw/master/target/editplus-0.1.1.jar)からダウンロードして下さい。
 
 # インストール
 - ダウンロードしたプラグインファイルをastah*アプリケーションにドラッグドロップするか、Program Files\asta-professionals\pluginsに置いて下さい。
