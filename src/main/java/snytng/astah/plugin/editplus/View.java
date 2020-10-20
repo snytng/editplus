@@ -350,6 +350,9 @@ ProjectEventListener
 
 					TransactionManager.beginTransaction();
 
+					ILinkPresentation link = (ILinkPresentation)selectedPresentation;
+					Point2D[] linkAllPoints = link.getAllPoints();
+
 					BasicModelEditor bme = ModelEditorFactory.getBasicModelEditor();
 					bme.delete(g);
 					g = bme.createGeneralization(superType, subType, "");
@@ -371,6 +374,15 @@ ProjectEventListener
 					}
 					if(superP != null && subP != null){
 						selectedPresentation = cde.createLinkPresentation(g, superP , subP);
+						ILinkPresentation newLink = (ILinkPresentation)selectedPresentation;
+						Point2D[] newLinkAllPoints = newLink.getAllPoints();
+						Point2D[] revLinkAllPoints = new Point2D[linkAllPoints.length];
+						for(int i = 0; i < linkAllPoints.length; i++) {
+							revLinkAllPoints[linkAllPoints.length - 1 -i] = linkAllPoints[i];
+						}
+						revLinkAllPoints[0] = newLinkAllPoints[0];
+						revLinkAllPoints[revLinkAllPoints.length - 1] = newLinkAllPoints[newLinkAllPoints.length - 1];
+						newLink.setAllPoints(revLinkAllPoints);
 					}
 
 					TransactionManager.endTransaction();
@@ -407,6 +419,9 @@ ProjectEventListener
 
 					TransactionManager.beginTransaction();
 
+					ILinkPresentation link = (ILinkPresentation)selectedPresentation;
+					Point2D[] linkAllPoints = link.getAllPoints();
+
 					BasicModelEditor bme = ModelEditorFactory.getBasicModelEditor();
 					bme.delete(d);
 					d = bme.createDependency(client, supplier, "");
@@ -428,6 +443,15 @@ ProjectEventListener
 					}
 					if(clientP != null && supplierP != null){
 						selectedPresentation = cde.createLinkPresentation(d, clientP , supplierP);
+						ILinkPresentation newLink = (ILinkPresentation)selectedPresentation;
+						Point2D[] newLinkAllPoints = newLink.getAllPoints();
+						Point2D[] revLinkAllPoints = new Point2D[linkAllPoints.length];
+						for(int i = 0; i < linkAllPoints.length; i++) {
+							revLinkAllPoints[linkAllPoints.length - 1 -i] = linkAllPoints[i];
+						}
+						revLinkAllPoints[0] = newLinkAllPoints[0];
+						revLinkAllPoints[revLinkAllPoints.length - 1] = newLinkAllPoints[newLinkAllPoints.length - 1];
+						newLink.setAllPoints(revLinkAllPoints);
 					}
 
 					TransactionManager.endTransaction();
@@ -982,11 +1006,10 @@ ProjectEventListener
 				.map(IPresentation::getModel)
 				.forEach(e ->
 				{
-					boolean hasStereotype = Arrays.asList(e.getStereotypes()).contains(stereotype);
 					try{
-						if(add && ! hasStereotype) {
+						if(add && ! e.hasStereotype(stereotype)) {
 							e.addStereotype(stereotype);
-						} else if(! add && hasStereotype) {
+						} else if(! add && e.hasStereotype(stereotype)) {
 							e.removeStereotype(stereotype);
 						} else {
 							// do nothing
