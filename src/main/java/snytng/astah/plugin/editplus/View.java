@@ -642,10 +642,10 @@ ProjectEventListener
 						.toArray(ILinkPresentation[]::new);
 
 
-				double xmin = Double.MAX_VALUE;
-				double ymin = Double.MAX_VALUE;
-				double xmax = Double.MIN_VALUE;
-				double ymax = Double.MIN_VALUE;
+				double xmin = Double.POSITIVE_INFINITY;
+				double ymin = Double.POSITIVE_INFINITY;
+				double xmax = Double.NEGATIVE_INFINITY;
+				double ymax = Double.NEGATIVE_INFINITY;
 
 				for(INodePresentation np : nps) {
 					Point2D point = np.getLocation();
@@ -747,10 +747,10 @@ ProjectEventListener
 						.toArray(ILinkPresentation[]::new);
 
 
-				double xmin = Double.MAX_VALUE;
-				double ymin = Double.MAX_VALUE;
-				double xmax = Double.MIN_VALUE;
-				double ymax = Double.MIN_VALUE;
+				double xmin = Double.POSITIVE_INFINITY;
+				double ymin = Double.POSITIVE_INFINITY;
+				double xmax = Double.NEGATIVE_INFINITY;
+				double ymax = Double.NEGATIVE_INFINITY;
 
 				for(INodePresentation np : nps) {
 					Point2D point = np.getLocation();
