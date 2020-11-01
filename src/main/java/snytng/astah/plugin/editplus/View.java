@@ -632,6 +632,7 @@ ProjectEventListener
 					.collect(Collectors.joining(System.lineSeparator())));
 				});
 
+				// 反転対称軸を決定する
 				INodePresentation[] nps = Arrays.stream(ps)
 						.filter(p -> p instanceof INodePresentation)
 						.filter(p -> p.getLabel() != null)
@@ -640,7 +641,6 @@ ProjectEventListener
 				ILinkPresentation[] lps = Arrays.stream(ps)
 						.filter(p -> p instanceof ILinkPresentation)
 						.toArray(ILinkPresentation[]::new);
-
 
 				double xmin = Double.POSITIVE_INFINITY;
 				double ymin = Double.POSITIVE_INFINITY;
@@ -661,14 +661,19 @@ ProjectEventListener
 				}
 
 				for(ILinkPresentation lp : lps){
-					for(Point2D point : lp.getAllPoints()){
-						double x = point.getX();
-						double y = point.getY();
+					Point2D[] lpps = lp.getAllPoints();
+					for(int i = 0; i < lpps.length; i++){
+						Point2D point = lpps[i];
+						// 矩形接続点（最初と最後）以外を対象
+						if(i != 0 && i != lpps.length-1){
+							double x = point.getX();
+							double y = point.getY();
 
-						if(x < xmin) xmin = x;
-						if(y < ymin) ymin = y;
-						if(x > xmax) xmax = x;
-						if(y > ymax) ymax = y;
+							if(x < xmin) xmin = x;
+							if(y < ymin) ymin = y;
+							if(x > xmax) xmax = x;
+							if(y > ymax) ymax = y;
+						}
 					}
 				}
 
@@ -678,6 +683,7 @@ ProjectEventListener
 				try {
 					TransactionManager.beginTransaction();
 
+					// INodePresentationの反転
 					for(INodePresentation np : nps) {
 						Point2D point = np.getLocation();
 						double x = point.getX();
@@ -688,28 +694,39 @@ ProjectEventListener
 						if(flipDirection == FlipDirection.HORIZONTAL){
 							double nx = 2d*x0 - x - w;
 							point.setLocation(nx, y);
-							np.setLocation(point);
 						} else if(flipDirection == FlipDirection.VERTICAL){
 							double ny = 2d*y0 - y - h;
 							point.setLocation(x, ny);
-							np.setLocation(point);
 						}
+						np.setLocation(point);
 					}
 
+					TransactionManager.endTransaction();
+
+					// ILinkPresentationの反転
+					lps = Arrays.stream(ps)
+							.filter(p -> p instanceof ILinkPresentation)
+							.toArray(ILinkPresentation[]::new);
+
+					TransactionManager.beginTransaction();
+
 					for(ILinkPresentation lp : lps) {
-						Point2D[] lpps = lp.getPoints();
+						Point2D[] lpps = lp.getAllPoints();
 						Point2D[] points = new Point2D[lpps.length];
 						for(int i = 0; i < lpps.length; i++){
 							Point2D point = lpps[i];
-							double x = point.getX();
-							double y = point.getY();
 
-							if(flipDirection == FlipDirection.HORIZONTAL){
-								double nx = 2d*x0 - x;
-								point.setLocation(nx, y);
-							} else if(flipDirection == FlipDirection.VERTICAL){
-								double ny = 2d*y0 - y;
-								point.setLocation(x, ny);
+							// 矩形接続点（最初と最後）はそのまま、それ以外は反転する
+							if(i != 0 && i != lpps.length-1){
+								double x = point.getX();
+								double y = point.getY();
+								if(flipDirection == FlipDirection.HORIZONTAL){
+									double nx = 2d*x0 - x;
+									point.setLocation(nx, y);
+								} else if(flipDirection == FlipDirection.VERTICAL){
+									double ny = 2d*y0 - y;
+									point.setLocation(x, ny);
+								}
 							}
 							points[i] = point;
 						}
@@ -719,8 +736,10 @@ ProjectEventListener
 					TransactionManager.endTransaction();
 				} catch (InvalidEditingException e) {
 					TransactionManager.abortTransaction();
+					e.printStackTrace();
 				}
 			} catch (InvalidUsingException e) {
+				e.printStackTrace();
 			}
 
 		};
@@ -736,7 +755,7 @@ ProjectEventListener
 				IDiagramViewManager dvm = vm.getDiagramViewManager();
 				IPresentation[] ps = dvm.getSelectedPresentations();
 
-
+				// 回転軸を決定
 				INodePresentation[] nps = Arrays.stream(ps)
 						.filter(p -> p instanceof INodePresentation)
 						.filter(p -> p.getLabel() != null)
@@ -766,14 +785,19 @@ ProjectEventListener
 				}
 
 				for(ILinkPresentation lp : lps){
-					for(Point2D point : lp.getAllPoints()){
-						double x = point.getX();
-						double y = point.getY();
+					Point2D[] lpps = lp.getAllPoints();
+					for(int i = 0; i < lpps.length; i++){
+						Point2D point = lpps[i];
+						// 矩形接続点（最初と最後）以外を対象
+						if(i != 0 && i != lpps.length-1){
+							double x = point.getX();
+							double y = point.getY();
 
-						if(x < xmin) xmin = x;
-						if(y < ymin) ymin = y;
-						if(x > xmax) xmax = x;
-						if(y > ymax) ymax = y;
+							if(x < xmin) xmin = x;
+							if(y < ymin) ymin = y;
+							if(x > xmax) xmax = x;
+							if(y > ymax) ymax = y;
+						}
 					}
 				}
 
@@ -796,17 +820,30 @@ ProjectEventListener
 						np.setLocation(point);
 					}
 
+					TransactionManager.endTransaction();
+
+					// ILinkPresentationの反転
+					lps = Arrays.stream(ps)
+							.filter(p -> p instanceof ILinkPresentation)
+							.toArray(ILinkPresentation[]::new);
+
+					TransactionManager.beginTransaction();
+
 					for(ILinkPresentation lp : lps) {
-						Point2D[] lpps = lp.getPoints();
+						Point2D[] lpps = lp.getAllPoints();
 						Point2D[] points = new Point2D[lpps.length];
 						for(int i = 0; i < lpps.length; i++){
 							Point2D point = lpps[i];
 							double x = point.getX();
 							double y = point.getY();
 
-							double nx = -(y - y0) + x0;
-							double ny =  (x - x0) + y0;
-							point.setLocation(nx, ny);
+							// 矩形接続点（最初と最後）はそのまま、それ以外は回転する
+							if(i != 0 && i != lpps.length-1){
+								double nx = -(y - y0) + x0;
+								double ny =  (x - x0) + y0;
+								point.setLocation(nx, ny);
+							}
+
 							points[i] = point;
 						}
 
