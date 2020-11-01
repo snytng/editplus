@@ -970,29 +970,14 @@ ProjectEventListener
 					return;
 				}
 
-				String bgColorString = cs[0].getProperty(FILL_COLOR);
-				String fgColorString = cs[0].getProperty(FONT_COLOR);
-
 				TransactionManager.beginTransaction();
 
 				for(IPresentation p : ps) {
 					if(p.getModel() instanceof IComment) {
 						continue;
 					}
-
-					if(isValidProperty(bgColorString)) {
-						if(isValidProperty(p.getProperty(FILL_COLOR))) {
-							p.setProperty(FILL_COLOR, bgColorString);
-						}
-					}
-
-					if(isValidProperty(fgColorString)) {
-						if(isValidProperty(p.getProperty(FONT_COLOR))) {
-							p.setProperty(FONT_COLOR, fgColorString);
-						}
-					}
-
-
+					syncProperty(cs[0], p, FILL_COLOR);
+					syncProperty(cs[0], p, FONT_COLOR);
 				}
 
 				TransactionManager.endTransaction();
@@ -1249,35 +1234,13 @@ ProjectEventListener
 
 			// 色合わせモードがONのとき
 			if(selectedColorPickerPresentations != null){
-				String fillColor = p.getProperty(FILL_COLOR);
-				String lineColor = p.getProperty(LINE_COLOR);
-				String fontColor = p.getProperty(FONT_COLOR);
-
 				try {
 					TransactionManager.beginTransaction();
 
 					for(IPresentation pr : selectedColorPickerPresentations) {
-						// FILL_COLORを持つIPresentationのとき
-						if(isValidProperty(fillColor)) {
-							String origFillColor = pr.getProperty(FILL_COLOR);
-							if(isValidProperty(origFillColor)) {
-								pr.setProperty(FILL_COLOR, fillColor);
-							}
-						}
-						// LINE_COLORを持つIPresentationのとき
-						if(isValidProperty(lineColor)) {
-							String origLineColor = pr.getProperty(LINE_COLOR);
-							if(isValidProperty(origLineColor)) {
-								pr.setProperty(LINE_COLOR, lineColor);
-							}
-						}
-						// FONT_COLORを持つIPresentationのとき
-						if(isValidProperty(fontColor)) {
-							String origFontColor = pr.getProperty(FONT_COLOR);
-							if(isValidProperty(origFontColor)) {
-								pr.setProperty(FONT_COLOR, fontColor);
-							}
-						}
+						syncProperty(p, pr, FILL_COLOR);
+						syncProperty(p, pr, LINE_COLOR);
+						syncProperty(p, pr, FONT_COLOR);
 					}
 
 					TransactionManager.endTransaction();
@@ -1290,6 +1253,15 @@ ProjectEventListener
 		}
 		// 色合わせモードを解除
 		selectedColorPickerPresentations = null;
+	}
+
+	private void syncProperty(IPresentation p, IPresentation pr, String propertyKey) throws InvalidEditingException {
+		String fillColor = p.getProperty(propertyKey);
+		if(isValidProperty(fillColor)) {
+			if(isValidProperty(pr.getProperty(propertyKey))) {
+				pr.setProperty(propertyKey, fillColor);
+			}
+		}
 	}
 
 	private boolean isValidProperty(String prop) {
