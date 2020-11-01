@@ -951,8 +951,9 @@ ProjectEventListener
 
 	private static final String FILL_COLOR = "fill.color";
 	private static final String LINE_COLOR = "line.color";
+	private static final String FONT_COLOR = "font.color";
 
-	private ActionListener getSyncColorActionListener(){
+	private ActionListener getSyncNoteColorActionListener(){
 		return event -> {
 			// 選択要素の取得
 			IViewManager vm;
@@ -970,27 +971,38 @@ ProjectEventListener
 				}
 
 				String bgColorString = cs[0].getProperty(FILL_COLOR);
+				String fgColorString = cs[0].getProperty(FONT_COLOR);
 
 				TransactionManager.beginTransaction();
 
-				Arrays.stream(ps)
-				.filter(p -> ! (p.getModel() instanceof IComment))
-				.filter(p -> p.getProperty(FILL_COLOR) != null)
-				.forEach(p ->
-				{
-					try{
-						p.setProperty(FILL_COLOR, bgColorString);
-					}catch (InvalidEditingException e) {
+				for(IPresentation p : ps) {
+					if(p.getModel() instanceof IComment) {
+						continue;
 					}
-				});
+
+					if(isValidProperty(bgColorString)) {
+						if(isValidProperty(p.getProperty(FILL_COLOR))) {
+							p.setProperty(FILL_COLOR, bgColorString);
+						}
+					}
+
+					if(isValidProperty(fgColorString)) {
+						if(isValidProperty(p.getProperty(FONT_COLOR))) {
+							p.setProperty(FONT_COLOR, fgColorString);
+						}
+					}
+
+
+				}
 
 				TransactionManager.endTransaction();
-			} catch (InvalidUsingException e) {
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
 			}
 		};
 	}
 
-	private transient IPresentation[] selectedPresentations = null;
+	private transient IPresentation[] selectedColorPickerPresentations = null;
 	private ActionListener getColorPickerActionListener(){
 		return event -> {
 			// 選択要素の取得
@@ -999,12 +1011,12 @@ ProjectEventListener
 			try {
 				vm = projectAccessor.getViewManager();
 				IDiagramViewManager dvm = vm.getDiagramViewManager();
-				selectedPresentations = dvm.getSelectedPresentations();
+				selectedColorPickerPresentations = dvm.getSelectedPresentations();
 
 				// デバッグ出力
 				logger.log(Level.FINE, "selectedPresentations:");
 				logger.log(Level.FINE, () ->
-				Arrays.stream(selectedPresentations)
+				Arrays.stream(selectedColorPickerPresentations)
 				.map(IPresentation::getLabel)
 				.sorted()
 				.collect(Collectors.joining(System.lineSeparator())));
@@ -1114,7 +1126,7 @@ ProjectEventListener
 		bColorPicker.addActionListener(getColorPickerActionListener());
 		// ノート活用
 		JButton bSyncColor = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.syncNoteColor"));
-		bSyncColor.addActionListener(getSyncColorActionListener());
+		bSyncColor.addActionListener(getSyncNoteColorActionListener());
 		JButton bAddStereotype = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.addNoteStereotype"));
 		bAddStereotype.addActionListener(getSyncStereotypeActionListener(true));
 		JButton bRemoveStereotype = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.removeNoteStereotype"));
@@ -1158,6 +1170,9 @@ ProjectEventListener
 				updateClassDiagram(dvm);
 			}
 
+			// 色ピッカー
+			updateColorPicker(dvm);
+
 		}catch(Exception ex){
 		}
 	}
@@ -1171,7 +1186,7 @@ ProjectEventListener
 		selectedPresentation = null;
 
 		// 選択要素の取得
-		IPresentation[] presentation = dvm.getSelectedPresentations();
+		IPresentation[] ps = dvm.getSelectedPresentations();
 
 		// デバッグ出力
 		logger.log(Level.INFO, "updateClassDiagram");
@@ -1185,14 +1200,14 @@ ProjectEventListener
 		.collect(Collectors.joining(System.lineSeparator())));
 
 		// 選択要素の1つめを中心に移動できるようにする
-		if(presentation.length > 0){
-			selectedPresentation = presentation[0];
+		if(ps.length > 0){
+			selectedPresentation = ps[0];
 			bCT.setEnabled(true);
 		}
 
 		// 選択要素が一つのとき
-		if(presentation.length == 1){
-			IPresentation p = presentation[0];
+		if(ps.length == 1){
+			IPresentation p = ps[0];
 			selectedPresentation = p;
 
 			// デバッグ出力
@@ -1220,45 +1235,67 @@ ProjectEventListener
 				.collect(Collectors.joining(System.lineSeparator())));
 
 			}
+		}
+	}
+
+	private void updateColorPicker(IDiagramViewManager dvm) {
+		// 選択要素の取得
+		IPresentation[] ps = dvm.getSelectedPresentations();
+
+		// 選択要素が一つのとき
+		if(ps.length == 1){
+			IPresentation p = ps[0];
+			selectedPresentation = p;
 
 			// 色合わせモードがONのとき
-			if(selectedPresentations != null){
+			if(selectedColorPickerPresentations != null){
+				String fillColor = p.getProperty(FILL_COLOR);
+				String lineColor = p.getProperty(LINE_COLOR);
+				String fontColor = p.getProperty(FONT_COLOR);
 
-				Arrays.stream(selectedPresentations)
-				.filter(pr -> pr.getClass() == p.getClass())  // 同じIPresentaionを選択
-				.forEach(pr -> {
+				try {
+					TransactionManager.beginTransaction();
 
-					// FILL_COLORを持つIPresentationのとき
-					if(p.getProperty(FILL_COLOR) != null){
-						String fillColor = p.getProperty(FILL_COLOR);
-						try {
-							TransactionManager.beginTransaction();
-							pr.setProperty(FILL_COLOR, fillColor);
-							TransactionManager.endTransaction();
-						} catch (InvalidEditingException e1) {
-							TransactionManager.abortTransaction();
+					for(IPresentation pr : selectedColorPickerPresentations) {
+						// FILL_COLORを持つIPresentationのとき
+						if(isValidProperty(fillColor)) {
+							String origFillColor = pr.getProperty(FILL_COLOR);
+							if(isValidProperty(origFillColor)) {
+								pr.setProperty(FILL_COLOR, fillColor);
+							}
+						}
+						// LINE_COLORを持つIPresentationのとき
+						if(isValidProperty(lineColor)) {
+							String origLineColor = pr.getProperty(LINE_COLOR);
+							if(isValidProperty(origLineColor)) {
+								pr.setProperty(LINE_COLOR, lineColor);
+							}
+						}
+						// FONT_COLORを持つIPresentationのとき
+						if(isValidProperty(fontColor)) {
+							String origFontColor = pr.getProperty(FONT_COLOR);
+							if(isValidProperty(origFontColor)) {
+								pr.setProperty(FONT_COLOR, fontColor);
+							}
 						}
 					}
 
-					// LINE_COLORを持つIPresentationのとき
-					if(p.getProperty(LINE_COLOR) != null){
-						String lineColor = p.getProperty(LINE_COLOR);
+					TransactionManager.endTransaction();
+				} catch (InvalidEditingException e) {
+					TransactionManager.abortTransaction();
+					e.printStackTrace();
+				}
 
-						try {
-							TransactionManager.beginTransaction();
-							pr.setProperty(LINE_COLOR, lineColor);
-							TransactionManager.endTransaction();
-						} catch (InvalidEditingException e1) {
-							TransactionManager.abortTransaction();
-						}
-					}
-
-				});
 			}
 		}
 		// 色合わせモードを解除
-		selectedPresentations = null;
+		selectedColorPickerPresentations = null;
 	}
+
+	private boolean isValidProperty(String prop) {
+		return (prop != null && ! prop.isEmpty() && ! prop.equals("null"));
+	}
+
 
 	@Override
 	public void addSelectionListener(ISelectionListener listener) {
