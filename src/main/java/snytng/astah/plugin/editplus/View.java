@@ -951,7 +951,7 @@ ProjectEventListener
 
 	private static final String FILL_COLOR = "fill.color";
 	private static final String LINE_COLOR = "line.color";
-	private static final String FONT_COLOR = "font.color";
+	//private static final String FONT_COLOR = "font.color";
 
 	private ActionListener getSyncNoteColorActionListener(){
 		return event -> {
@@ -977,7 +977,7 @@ ProjectEventListener
 						continue;
 					}
 					syncProperty(cs[0], p, FILL_COLOR);
-					syncProperty(cs[0], p, FONT_COLOR);
+					//syncProperty(cs[0], p, FONT_COLOR);
 				}
 
 				TransactionManager.endTransaction();
@@ -1240,7 +1240,7 @@ ProjectEventListener
 					for(IPresentation pr : selectedColorPickerPresentations) {
 						syncProperty(p, pr, FILL_COLOR);
 						syncProperty(p, pr, LINE_COLOR);
-						syncProperty(p, pr, FONT_COLOR);
+						//syncProperty(p, pr, FONT_COLOR);
 					}
 
 					TransactionManager.endTransaction();

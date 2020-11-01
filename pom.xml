@@ -10,7 +10,7 @@
 	</properties>
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>snytng.astah.plugin.editplus</groupId>
-	<version>0.1.3b</version>
+	<version>0.1.4</version>
 	<packaging>bundle</packaging>
 	<pluginRepositories>
 		<pluginRepository>
