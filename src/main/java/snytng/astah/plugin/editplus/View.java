@@ -283,6 +283,26 @@ ProjectEventListener
 	};
 	private ActionListener getAggregationCompositeActionListener() {
 		return event -> {
+			IElement e = selectedPresentation.getModel();
+
+			// 選択された関連の種類を確認
+			if (e instanceof IAssociation){
+				IAssociation a = (IAssociation)e;
+				IAttribute[] att = a.getMemberEnds();
+
+				if(att[0].isComposite()) {
+					modiyAssociationIndex = 1;
+				} else if(att[1].isAggregate()) {
+					modiyAssociationIndex = 3;
+				} else if(att[0].isAggregate()) {
+					modiyAssociationIndex = 2;
+				} else if(att[1].isComposite()) {
+					modiyAssociationIndex = 4;
+				} else {
+					modiyAssociationIndex = 0;
+				}
+			}
+			// 次の候補の関連に変更する
 			modiyAssociationIndex++;
 			boolean[] bs = associations[modiyAssociationIndex % associations.length];
 			modifyAssociation(bs[0], bs[1], bs[2], bs[3]);
