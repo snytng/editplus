@@ -995,6 +995,92 @@ ProjectEventListener
 		};
 	}
 
+	private ActionListener getAlignRelationActionListener (){
+		return event -> {
+			// 選択要素の取得
+			// 今選択している図のタイプを取得する
+			IViewManager vm;
+			try {
+				vm = projectAccessor.getViewManager();
+				IDiagramViewManager dvm = vm.getDiagramViewManager();
+				IPresentation[] ps = dvm.getSelectedPresentations();
+
+				// 対象ノードを選択
+				INodePresentation[] npall = Arrays.stream(ps)
+						.filter(INodePresentation.class::isInstance)
+						.filter(p -> p.getLabel() != null)
+						.toArray(INodePresentation[]::new);
+
+				for(int i = 0; i < npall.length; i++) {
+					for(int j = 0; j < i; j++) {
+						INodePresentation[] nps = new INodePresentation[] {npall[i], npall[j]};
+
+						double xmin = Double.POSITIVE_INFINITY;
+						double ymin = Double.POSITIVE_INFINITY;
+						double xmax = Double.NEGATIVE_INFINITY;
+						double ymax = Double.NEGATIVE_INFINITY;
+
+						for(INodePresentation np : nps) {
+							Point2D point = np.getLocation();
+							double x = point.getX();
+							double y = point.getY();
+							double w = np.getWidth();
+							double h = np.getHeight();
+
+							if(x < xmin)     xmin = x;
+							if(y < ymin)     ymin = y;
+							if(x + w > xmax) xmax = x + w;
+							if(y + h > ymax) ymax = y + h;
+						}
+
+						double x0 = (xmin + xmax)/2d;
+						double y0 = (ymin + ymax)/2d;
+
+						// ILinkPresentationの整列
+						ILinkPresentation[] lps = Arrays.stream(ps)
+								.filter(ILinkPresentation.class::isInstance)
+								.map(ILinkPresentation.class::cast)
+								.filter(lp -> (lp.getSource() == nps[0] && lp.getTarget() == nps[1]) ||
+											(lp.getSource() == nps[1] && lp.getTarget() == nps[0]))
+								.toArray(ILinkPresentation[]::new);
+
+						TransactionManager.beginTransaction();
+
+						for(int k = 0; k < lps.length; k++) {
+							ILinkPresentation lp = lps[k];
+							Point2D[] lpps = lp.getAllPoints();
+							Point2D[] points = new Point2D[3];
+							// 始点と終点はそのまま
+							points[0] = lpps[0];
+							points[2] = lpps[lpps.length-1];
+							// 中間点を設定
+							Double x1 = points[0].getX();
+							Double y1 = points[0].getY();
+							Double x2 = points[2].getX();
+							Double y2 = points[2].getY();
+							Point2D point = new Point2D.Double();
+							double w0 = 30D; // 関連線の間隔単位
+							double k0 = w0 * ((double)k - (double)lps.length/2.0D + 0.5D); // k番目の間隔
+							double d0 = Math.sqrt(Math.pow(y2 - y1, 2D) + Math.pow(x2 - x1, 2D)); // 傾きの長さ
+							double nx = - (y2 - y1) / d0 * k0 + x0;
+							double ny =   (x2 - x1) / d0 * k0 + y0;
+							point.setLocation(nx, ny);
+							points[1] = point;
+							// 置き換え
+							lp.setAllPoints(points);
+						}
+
+						TransactionManager.endTransaction();
+					}
+				}
+
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
+			}
+
+		};
+	}
+
 	private ActionListener getSelectClassListener (){
 		return event -> {
 			// 選択要素の取得
@@ -1245,6 +1331,8 @@ ProjectEventListener
 		// 関連名
 		JButton bAssociationName = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.alignRelationName"));
 		bAssociationName.addActionListener(getAssociationNameActionListener());
+		JButton bAlignRelation = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.alignRelation"));
+		bAlignRelation.addActionListener(getAlignRelationActionListener());
 		// 色ピッカー
 		JButton bColorPicker = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.pickUpColor"));
 		bColorPicker.addActionListener(getColorPickerActionListener());
@@ -1266,6 +1354,7 @@ ProjectEventListener
 		fPanel.add(bSelectClass);
 		fPanel.add(getSeparator());
 		fPanel.add(bAssociationName);
+		fPanel.add(bAlignRelation);
 		fPanel.add(getSeparator());
 		fPanel.add(bColorPicker);
 		fPanel.add(bSyncColor);
