@@ -644,7 +644,7 @@ ProjectEventListener
 
 				Arrays.stream(ps)
 				.forEach(p -> {
-					logger.log(Level.INFO, "Presentation=" + p.getType() + "(" + p.getClass() + ")");
+					logger.log(Level.INFO, () -> "Presentation=" + p.getType() + "(" + p.getClass() + ")");
 					logger.log(Level.INFO, () ->
 					(String)p.getProperties().keySet().stream()
 					.sorted()
@@ -777,12 +777,12 @@ ProjectEventListener
 
 				// 回転軸を決定
 				INodePresentation[] nps = Arrays.stream(ps)
-						.filter(p -> p instanceof INodePresentation)
+						.filter(INodePresentation.class::isInstance)
 						.filter(p -> p.getLabel() != null)
 						.toArray(INodePresentation[]::new);
 
 				ILinkPresentation[] lps = Arrays.stream(ps)
-						.filter(p -> p instanceof ILinkPresentation)
+						.filter(ILinkPresentation.class::isInstance)
 						.toArray(ILinkPresentation[]::new);
 
 
@@ -827,6 +827,7 @@ ProjectEventListener
 				try {
 					TransactionManager.beginTransaction();
 
+					// INodePresentationの回転
 					for(INodePresentation np : nps) {
 						Point2D point = np.getLocation();
 						double x = point.getX();
@@ -842,9 +843,9 @@ ProjectEventListener
 
 					TransactionManager.endTransaction();
 
-					// ILinkPresentationの反転
+					// ILinkPresentationの回転
 					lps = Arrays.stream(ps)
-							.filter(p -> p instanceof ILinkPresentation)
+							.filter(ILinkPresentation.class::isInstance)
 							.toArray(ILinkPresentation[]::new);
 
 					TransactionManager.beginTransaction();
@@ -880,6 +881,120 @@ ProjectEventListener
 		};
 	}
 
+	private ActionListener getExpandActionListener (float expandRatio){
+		return event -> {
+			// 選択要素の取得
+			// 今選択している図のタイプを取得する
+			IViewManager vm;
+			try {
+				vm = projectAccessor.getViewManager();
+				IDiagramViewManager dvm = vm.getDiagramViewManager();
+				IPresentation[] ps = dvm.getSelectedPresentations();
+
+				// 原点を決定
+				INodePresentation[] nps = Arrays.stream(ps)
+						.filter(INodePresentation.class::isInstance)
+						.filter(p -> p.getLabel() != null)
+						.toArray(INodePresentation[]::new);
+
+				ILinkPresentation[] lps = Arrays.stream(ps)
+						.filter(ILinkPresentation.class::isInstance)
+						.toArray(ILinkPresentation[]::new);
+
+
+				double xmin = Double.POSITIVE_INFINITY;
+				double ymin = Double.POSITIVE_INFINITY;
+				double xmax = Double.NEGATIVE_INFINITY;
+				double ymax = Double.NEGATIVE_INFINITY;
+
+				for(INodePresentation np : nps) {
+					Point2D point = np.getLocation();
+					double x = point.getX();
+					double y = point.getY();
+					double w = np.getWidth();
+					double h = np.getHeight();
+
+					if(x < xmin)     xmin = x;
+					if(y < ymin)     ymin = y;
+					if(x + w > xmax) xmax = x + w;
+					if(y + h > ymax) ymax = y + h;
+				}
+
+				for(ILinkPresentation lp : lps){
+					Point2D[] lpps = lp.getAllPoints();
+					for(int i = 0; i < lpps.length; i++){
+						Point2D point = lpps[i];
+						// 矩形接続点（最初と最後）以外を対象
+						if(i != 0 && i != lpps.length-1){
+							double x = point.getX();
+							double y = point.getY();
+
+							if(x < xmin) xmin = x;
+							if(y < ymin) ymin = y;
+							if(x > xmax) xmax = x;
+							if(y > ymax) ymax = y;
+						}
+					}
+				}
+
+				double x0 = (xmin + xmax)/2d;
+				double y0 = (ymin + ymax)/2d;
+
+				TransactionManager.beginTransaction();
+
+				// INodePresentationの拡大
+				for(INodePresentation np : nps) {
+					Point2D point = np.getLocation();
+					double x = point.getX();
+					double y = point.getY();
+					double w = np.getWidth();
+					double h = np.getHeight();
+
+					double nx = x0 + expandRatio*(x - x0);
+					double ny = y0 + expandRatio*(y - y0);
+					point.setLocation(nx, ny);
+					np.setLocation(point);
+				}
+
+				TransactionManager.endTransaction();
+
+				// ILinkPresentationの拡大
+				lps = Arrays.stream(ps)
+						.filter(ILinkPresentation.class::isInstance)
+						.toArray(ILinkPresentation[]::new);
+
+				TransactionManager.beginTransaction();
+
+				for(ILinkPresentation lp : lps) {
+					Point2D[] lpps = lp.getAllPoints();
+					Point2D[] points = new Point2D[lpps.length];
+					for(int i = 0; i < lpps.length; i++){
+						Point2D point = lpps[i];
+						double x = point.getX();
+						double y = point.getY();
+
+						// 矩形接続点（最初と最後）はそのまま、それ以外は回転する
+						if(i != 0 && i != lpps.length-1){
+							double nx = x0 + expandRatio*(x - x0);
+							double ny = y0 + expandRatio*(y - y0);
+							point.setLocation(nx, ny);
+						}
+
+						points[i] = point;
+					}
+
+					lp.setAllPoints(points);
+				}
+
+				TransactionManager.endTransaction();
+
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
+			}
+
+		};
+	}
+
 	private ActionListener getSelectClassListener (){
 		return event -> {
 			// 選択要素の取得
@@ -892,7 +1007,7 @@ ProjectEventListener
 
 				// IClassのINodePresentationを抽出
 				INodePresentation[] nps = Arrays.stream(ps)
-						.filter(p -> p instanceof INodePresentation)
+						.filter(INodePresentation.class::isInstance)
 						.filter(p -> p.getModel() instanceof IClass)
 						.toArray(INodePresentation[]::new);
 
@@ -1120,6 +1235,10 @@ ProjectEventListener
 		bFlipHorizontal.addActionListener(getFlipActionListener(FlipDirection.HORIZONTAL));
 		JButton bClockwiseRotation90 = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.rotateRight90degrees"));
 		bClockwiseRotation90.addActionListener(getRotationActionListener());
+		JButton bScaleUp = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.scaleUp"));
+		bScaleUp.addActionListener(getExpandActionListener(1.10F));
+		JButton bScaleDown = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.scaleDown"));
+		bScaleDown.addActionListener(getExpandActionListener(0.90F));
 		// 選択変更
 		JButton bSelectClass = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.selectClasses"));
 		bSelectClass.addActionListener(getSelectClassListener());
@@ -1141,6 +1260,8 @@ ProjectEventListener
 		fPanel.add(bFlipVertical);
 		fPanel.add(bFlipHorizontal);
 		fPanel.add(bClockwiseRotation90);
+		fPanel.add(bScaleUp);
+		fPanel.add(bScaleDown);
 		fPanel.add(getSeparator());
 		fPanel.add(bSelectClass);
 		fPanel.add(getSeparator());
