@@ -998,19 +998,19 @@ ProjectEventListener
 	private ActionListener getAlignRelationActionListener (){
 		return event -> {
 			// 選択要素の取得
-			// 今選択している図のタイプを取得する
 			IViewManager vm;
 			try {
 				vm = projectAccessor.getViewManager();
 				IDiagramViewManager dvm = vm.getDiagramViewManager();
 				IPresentation[] ps = dvm.getSelectedPresentations();
 
-				// 対象ノードを選択
-				INodePresentation[] npall = Arrays.stream(ps)
+				// 図のノード一覧を取得
+				INodePresentation[] npall = Arrays.stream(dvm.getCurrentDiagram().getPresentations())
 						.filter(INodePresentation.class::isInstance)
 						.filter(p -> p.getLabel() != null)
 						.toArray(INodePresentation[]::new);
 
+				// 選択されているリンクをノードの間に整列
 				for(int i = 0; i < npall.length; i++) {
 					for(int j = 0; j < i; j++) {
 						INodePresentation[] nps = new INodePresentation[] {npall[i], npall[j]};
@@ -1058,6 +1058,14 @@ ProjectEventListener
 							Double y1 = points[0].getY();
 							Double x2 = points[2].getX();
 							Double y2 = points[2].getY();
+							if (lp.getSource() == nps[1] && lp.getTarget() == nps[0]) {
+								Double xt = x1;
+								Double yt = y1;
+								x1 = x2;
+								y1 = y2;
+								x2 = xt;
+								y2 = yt;
+							}
 							Point2D point = new Point2D.Double();
 							double w0 = 30D; // 関連線の間隔単位
 							double k0 = w0 * ((double)k - (double)lps.length/2.0D + 0.5D); // k番目の間隔
@@ -1076,6 +1084,7 @@ ProjectEventListener
 
 			} catch (InvalidUsingException | InvalidEditingException e) {
 				TransactionManager.abortTransaction();
+				e.printStackTrace();
 			}
 
 		};
