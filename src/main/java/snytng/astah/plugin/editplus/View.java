@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Random;
 import java.util.ResourceBundle;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -1041,7 +1042,7 @@ ProjectEventListener
 								.filter(ILinkPresentation.class::isInstance)
 								.map(ILinkPresentation.class::cast)
 								.filter(lp -> (lp.getSource() == nps[0] && lp.getTarget() == nps[1]) ||
-											(lp.getSource() == nps[1] && lp.getTarget() == nps[0]))
+										(lp.getSource() == nps[1] && lp.getTarget() == nps[0]))
 								.toArray(ILinkPresentation[]::new);
 
 						TransactionManager.beginTransaction();
@@ -1080,6 +1081,93 @@ ProjectEventListener
 
 						TransactionManager.endTransaction();
 					}
+				}
+
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
+				e.printStackTrace();
+			}
+
+		};
+	}
+
+	private ActionListener getDecorationActionListener (){
+		return event -> {
+			// 選択要素の取得
+			IViewManager vm;
+			try {
+				vm = projectAccessor.getViewManager();
+				IDiagramViewManager dvm = vm.getDiagramViewManager();
+				if(dvm.getCurrentDiagram() instanceof IClassDiagram) {
+					ClassDiagramEditor cde = projectAccessor.getDiagramEditorFactory().getClassDiagramEditor();
+					cde.setDiagram(dvm.getCurrentDiagram());
+					IPresentation[] ps = dvm.getSelectedPresentations();
+
+					// 図のノード一覧を取得
+					INodePresentation[] npall = Arrays.stream(dvm.getCurrentDiagram().getPresentations())
+							.filter(INodePresentation.class::isInstance)
+							.filter(p -> p.getLabel() != null)
+							.filter(p -> p.getModel() instanceof IClass)
+							.toArray(INodePresentation[]::new);
+
+					// 選択されているリンクをノードの間に整列
+					for(INodePresentation np : npall) {
+						Point2D point = np.getLocation();
+						double x = point.getX();
+						double y = point.getY();
+						double w = np.getWidth();
+						double h = np.getHeight();
+
+						TransactionManager.beginTransaction();
+
+						// 中間点を設定
+						int numOfPoints = 20;
+						Double xs = x-1;
+						Double ys = y;
+						Double xe = x-1;
+						Double ye = y+h;
+
+						Double xsi = xs;
+						Double ysi = ys;
+						Double xei = xs;
+						Double yei = ys;
+
+						Random rand = new Random();
+
+						for(int i = 1; i < numOfPoints; i++) {
+							xei = xs + (xe - xs)/numOfPoints*i + rand.nextDouble()*2-1D;
+							yei = ys + (ye - ys)/numOfPoints*i + rand.nextDouble()*2-1D;
+
+							ILinkPresentation lp = cde.createLine(
+									new Point2D.Double(xsi, ysi),
+									new Point2D.Double(xei, yei)
+									);
+							lp.setProperty(LINE_COLOR, "#0000FF");
+							lp.setProperty(LINE_WIDTH, "3");
+							lp.setProperty(LINE_TYPE, "line");
+
+							xsi = xei;
+							ysi = yei;
+						}
+
+						TransactionManager.endTransaction();
+					}
+
+					// 図のリンク一覧を取得
+					ILinkPresentation[] lpall = Arrays.stream(dvm.getCurrentDiagram().getPresentations())
+							.filter(ILinkPresentation.class::isInstance)
+							.toArray(ILinkPresentation[]::new);
+
+					// 選択されているリンクをノードの間に整列
+					for(ILinkPresentation lp : lpall) {
+						logger.log(Level.INFO, () ->
+						(String)lp.getProperties().keySet().stream()
+						.sorted()
+						.map(k -> (String)k + "=" + lp.getProperty((String)k))
+						.collect(Collectors.joining(System.lineSeparator())));
+					}
+
+
 				}
 
 			} catch (InvalidUsingException | InvalidEditingException e) {
@@ -1182,6 +1270,8 @@ ProjectEventListener
 	private static final String FILL_COLOR = "fill.color";
 	private static final String LINE_COLOR = "line.color";
 	//private static final String FONT_COLOR = "font.color";
+	private static final String LINE_TYPE = "line.type"; // line
+	private static final String LINE_WIDTH = "line.width"; // 1-5
 
 	private ActionListener getSyncNoteColorActionListener(){
 		return event -> {
@@ -1342,6 +1432,7 @@ ProjectEventListener
 		bAssociationName.addActionListener(getAssociationNameActionListener());
 		JButton bAlignRelation = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.alignRelation"));
 		bAlignRelation.addActionListener(getAlignRelationActionListener());
+
 		// 色ピッカー
 		JButton bColorPicker = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.pickUpColor"));
 		bColorPicker.addActionListener(getColorPickerActionListener());
