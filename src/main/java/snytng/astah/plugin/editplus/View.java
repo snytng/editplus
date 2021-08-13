@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Random;
 import java.util.ResourceBundle;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -644,7 +645,7 @@ ProjectEventListener
 
 				Arrays.stream(ps)
 				.forEach(p -> {
-					logger.log(Level.INFO, "Presentation=" + p.getType() + "(" + p.getClass() + ")");
+					logger.log(Level.INFO, () -> "Presentation=" + p.getType() + "(" + p.getClass() + ")");
 					logger.log(Level.INFO, () ->
 					(String)p.getProperties().keySet().stream()
 					.sorted()
@@ -777,12 +778,12 @@ ProjectEventListener
 
 				// 回転軸を決定
 				INodePresentation[] nps = Arrays.stream(ps)
-						.filter(p -> p instanceof INodePresentation)
+						.filter(INodePresentation.class::isInstance)
 						.filter(p -> p.getLabel() != null)
 						.toArray(INodePresentation[]::new);
 
 				ILinkPresentation[] lps = Arrays.stream(ps)
-						.filter(p -> p instanceof ILinkPresentation)
+						.filter(ILinkPresentation.class::isInstance)
 						.toArray(ILinkPresentation[]::new);
 
 
@@ -827,6 +828,7 @@ ProjectEventListener
 				try {
 					TransactionManager.beginTransaction();
 
+					// INodePresentationの回転
 					for(INodePresentation np : nps) {
 						Point2D point = np.getLocation();
 						double x = point.getX();
@@ -842,9 +844,9 @@ ProjectEventListener
 
 					TransactionManager.endTransaction();
 
-					// ILinkPresentationの反転
+					// ILinkPresentationの回転
 					lps = Arrays.stream(ps)
-							.filter(p -> p instanceof ILinkPresentation)
+							.filter(ILinkPresentation.class::isInstance)
 							.toArray(ILinkPresentation[]::new);
 
 					TransactionManager.beginTransaction();
@@ -880,6 +882,302 @@ ProjectEventListener
 		};
 	}
 
+	private ActionListener getExpandActionListener (float expandRatio){
+		return event -> {
+			// 選択要素の取得
+			// 今選択している図のタイプを取得する
+			IViewManager vm;
+			try {
+				vm = projectAccessor.getViewManager();
+				IDiagramViewManager dvm = vm.getDiagramViewManager();
+				IPresentation[] ps = dvm.getSelectedPresentations();
+
+				// 原点を決定
+				INodePresentation[] nps = Arrays.stream(ps)
+						.filter(INodePresentation.class::isInstance)
+						.filter(p -> p.getLabel() != null)
+						.toArray(INodePresentation[]::new);
+
+				ILinkPresentation[] lps = Arrays.stream(ps)
+						.filter(ILinkPresentation.class::isInstance)
+						.toArray(ILinkPresentation[]::new);
+
+
+				double xmin = Double.POSITIVE_INFINITY;
+				double ymin = Double.POSITIVE_INFINITY;
+				double xmax = Double.NEGATIVE_INFINITY;
+				double ymax = Double.NEGATIVE_INFINITY;
+
+				for(INodePresentation np : nps) {
+					Point2D point = np.getLocation();
+					double x = point.getX();
+					double y = point.getY();
+					double w = np.getWidth();
+					double h = np.getHeight();
+
+					if(x < xmin)     xmin = x;
+					if(y < ymin)     ymin = y;
+					if(x + w > xmax) xmax = x + w;
+					if(y + h > ymax) ymax = y + h;
+				}
+
+				for(ILinkPresentation lp : lps){
+					Point2D[] lpps = lp.getAllPoints();
+					for(int i = 0; i < lpps.length; i++){
+						Point2D point = lpps[i];
+						// 矩形接続点（最初と最後）以外を対象
+						if(i != 0 && i != lpps.length-1){
+							double x = point.getX();
+							double y = point.getY();
+
+							if(x < xmin) xmin = x;
+							if(y < ymin) ymin = y;
+							if(x > xmax) xmax = x;
+							if(y > ymax) ymax = y;
+						}
+					}
+				}
+
+				double x0 = (xmin + xmax)/2d;
+				double y0 = (ymin + ymax)/2d;
+
+				TransactionManager.beginTransaction();
+
+				// INodePresentationの拡大
+				for(INodePresentation np : nps) {
+					Point2D point = np.getLocation();
+					double x = point.getX();
+					double y = point.getY();
+					double w = np.getWidth();
+					double h = np.getHeight();
+
+					double nx = x0 + expandRatio*(x - x0);
+					double ny = y0 + expandRatio*(y - y0);
+					point.setLocation(nx, ny);
+					np.setLocation(point);
+				}
+
+				TransactionManager.endTransaction();
+
+				// ILinkPresentationの拡大
+				lps = Arrays.stream(ps)
+						.filter(ILinkPresentation.class::isInstance)
+						.toArray(ILinkPresentation[]::new);
+
+				TransactionManager.beginTransaction();
+
+				for(ILinkPresentation lp : lps) {
+					Point2D[] lpps = lp.getAllPoints();
+					Point2D[] points = new Point2D[lpps.length];
+					for(int i = 0; i < lpps.length; i++){
+						Point2D point = lpps[i];
+						double x = point.getX();
+						double y = point.getY();
+
+						// 矩形接続点（最初と最後）はそのまま、それ以外は回転する
+						if(i != 0 && i != lpps.length-1){
+							double nx = x0 + expandRatio*(x - x0);
+							double ny = y0 + expandRatio*(y - y0);
+							point.setLocation(nx, ny);
+						}
+
+						points[i] = point;
+					}
+
+					lp.setAllPoints(points);
+				}
+
+				TransactionManager.endTransaction();
+
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
+			}
+
+		};
+	}
+
+	private ActionListener getAlignRelationActionListener (){
+		return event -> {
+			// 選択要素の取得
+			IViewManager vm;
+			try {
+				vm = projectAccessor.getViewManager();
+				IDiagramViewManager dvm = vm.getDiagramViewManager();
+				IPresentation[] ps = dvm.getSelectedPresentations();
+
+				// 図のノード一覧を取得
+				INodePresentation[] npall = Arrays.stream(dvm.getCurrentDiagram().getPresentations())
+						.filter(INodePresentation.class::isInstance)
+						.filter(p -> p.getLabel() != null)
+						.toArray(INodePresentation[]::new);
+
+				// 選択されているリンクをノードの間に整列
+				for(int i = 0; i < npall.length; i++) {
+					for(int j = 0; j < i; j++) {
+						INodePresentation[] nps = new INodePresentation[] {npall[i], npall[j]};
+
+						double xmin = Double.POSITIVE_INFINITY;
+						double ymin = Double.POSITIVE_INFINITY;
+						double xmax = Double.NEGATIVE_INFINITY;
+						double ymax = Double.NEGATIVE_INFINITY;
+
+						for(INodePresentation np : nps) {
+							Point2D point = np.getLocation();
+							double x = point.getX();
+							double y = point.getY();
+							double w = np.getWidth();
+							double h = np.getHeight();
+
+							if(x < xmin)     xmin = x;
+							if(y < ymin)     ymin = y;
+							if(x + w > xmax) xmax = x + w;
+							if(y + h > ymax) ymax = y + h;
+						}
+
+						double x0 = (xmin + xmax)/2d;
+						double y0 = (ymin + ymax)/2d;
+
+						// ILinkPresentationの整列
+						ILinkPresentation[] lps = Arrays.stream(ps)
+								.filter(ILinkPresentation.class::isInstance)
+								.map(ILinkPresentation.class::cast)
+								.filter(lp -> (lp.getSource() == nps[0] && lp.getTarget() == nps[1]) ||
+										(lp.getSource() == nps[1] && lp.getTarget() == nps[0]))
+								.toArray(ILinkPresentation[]::new);
+
+						TransactionManager.beginTransaction();
+
+						for(int k = 0; k < lps.length; k++) {
+							ILinkPresentation lp = lps[k];
+							Point2D[] lpps = lp.getAllPoints();
+							Point2D[] points = new Point2D[3];
+							// 始点と終点はそのまま
+							points[0] = lpps[0];
+							points[2] = lpps[lpps.length-1];
+							// 中間点を設定
+							Double x1 = points[0].getX();
+							Double y1 = points[0].getY();
+							Double x2 = points[2].getX();
+							Double y2 = points[2].getY();
+							if (lp.getSource() == nps[1] && lp.getTarget() == nps[0]) {
+								Double xt = x1;
+								Double yt = y1;
+								x1 = x2;
+								y1 = y2;
+								x2 = xt;
+								y2 = yt;
+							}
+							Point2D point = new Point2D.Double();
+							double w0 = 30D; // 関連線の間隔単位
+							double k0 = w0 * ((double)k - (double)lps.length/2.0D + 0.5D); // k番目の間隔
+							double d0 = Math.sqrt(Math.pow(y2 - y1, 2D) + Math.pow(x2 - x1, 2D)); // 傾きの長さ
+							double nx = - (y2 - y1) / d0 * k0 + x0;
+							double ny =   (x2 - x1) / d0 * k0 + y0;
+							point.setLocation(nx, ny);
+							points[1] = point;
+							// 置き換え
+							lp.setAllPoints(points);
+						}
+
+						TransactionManager.endTransaction();
+					}
+				}
+
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
+				e.printStackTrace();
+			}
+
+		};
+	}
+
+	private ActionListener getDecorationActionListener (){
+		return event -> {
+			// 選択要素の取得
+			IViewManager vm;
+			try {
+				vm = projectAccessor.getViewManager();
+				IDiagramViewManager dvm = vm.getDiagramViewManager();
+				if(dvm.getCurrentDiagram() instanceof IClassDiagram) {
+					ClassDiagramEditor cde = projectAccessor.getDiagramEditorFactory().getClassDiagramEditor();
+					cde.setDiagram(dvm.getCurrentDiagram());
+					IPresentation[] ps = dvm.getSelectedPresentations();
+
+					// 図のノード一覧を取得
+					INodePresentation[] npall = Arrays.stream(dvm.getCurrentDiagram().getPresentations())
+							.filter(INodePresentation.class::isInstance)
+							.filter(p -> p.getLabel() != null)
+							.filter(p -> p.getModel() instanceof IClass)
+							.toArray(INodePresentation[]::new);
+
+					// 選択されているリンクをノードの間に整列
+					for(INodePresentation np : npall) {
+						Point2D point = np.getLocation();
+						double x = point.getX();
+						double y = point.getY();
+						double w = np.getWidth();
+						double h = np.getHeight();
+
+						TransactionManager.beginTransaction();
+
+						// 中間点を設定
+						int numOfPoints = 20;
+						Double xs = x-1;
+						Double ys = y;
+						Double xe = x-1;
+						Double ye = y+h;
+
+						Double xsi = xs;
+						Double ysi = ys;
+						Double xei = xs;
+						Double yei = ys;
+
+						Random rand = new Random();
+
+						for(int i = 1; i < numOfPoints; i++) {
+							xei = xs + (xe - xs)/numOfPoints*i + rand.nextDouble()*2-1D;
+							yei = ys + (ye - ys)/numOfPoints*i + rand.nextDouble()*2-1D;
+
+							ILinkPresentation lp = cde.createLine(
+									new Point2D.Double(xsi, ysi),
+									new Point2D.Double(xei, yei)
+									);
+							lp.setProperty(LINE_COLOR, "#0000FF");
+							lp.setProperty(LINE_WIDTH, "3");
+							lp.setProperty(LINE_TYPE, "line");
+
+							xsi = xei;
+							ysi = yei;
+						}
+
+						TransactionManager.endTransaction();
+					}
+
+					// 図のリンク一覧を取得
+					ILinkPresentation[] lpall = Arrays.stream(dvm.getCurrentDiagram().getPresentations())
+							.filter(ILinkPresentation.class::isInstance)
+							.toArray(ILinkPresentation[]::new);
+
+					// 選択されているリンクをノードの間に整列
+					for(ILinkPresentation lp : lpall) {
+						logger.log(Level.INFO, () ->
+						(String)lp.getProperties().keySet().stream()
+						.sorted()
+						.map(k -> (String)k + "=" + lp.getProperty((String)k))
+						.collect(Collectors.joining(System.lineSeparator())));
+					}
+
+
+				}
+
+			} catch (InvalidUsingException | InvalidEditingException e) {
+				TransactionManager.abortTransaction();
+				e.printStackTrace();
+			}
+
+		};
+	}
+
 	private ActionListener getSelectClassListener (){
 		return event -> {
 			// 選択要素の取得
@@ -892,7 +1190,7 @@ ProjectEventListener
 
 				// IClassのINodePresentationを抽出
 				INodePresentation[] nps = Arrays.stream(ps)
-						.filter(p -> p instanceof INodePresentation)
+						.filter(INodePresentation.class::isInstance)
 						.filter(p -> p.getModel() instanceof IClass)
 						.toArray(INodePresentation[]::new);
 
@@ -972,6 +1270,8 @@ ProjectEventListener
 	private static final String FILL_COLOR = "fill.color";
 	private static final String LINE_COLOR = "line.color";
 	//private static final String FONT_COLOR = "font.color";
+	private static final String LINE_TYPE = "line.type"; // line
+	private static final String LINE_WIDTH = "line.width"; // 1-5
 
 	private ActionListener getSyncNoteColorActionListener(){
 		return event -> {
@@ -1120,12 +1420,19 @@ ProjectEventListener
 		bFlipHorizontal.addActionListener(getFlipActionListener(FlipDirection.HORIZONTAL));
 		JButton bClockwiseRotation90 = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.rotateRight90degrees"));
 		bClockwiseRotation90.addActionListener(getRotationActionListener());
+		JButton bScaleUp = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.scaleUp"));
+		bScaleUp.addActionListener(getExpandActionListener(1.10F));
+		JButton bScaleDown = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.scaleDown"));
+		bScaleDown.addActionListener(getExpandActionListener(0.90F));
 		// 選択変更
 		JButton bSelectClass = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.selectClasses"));
 		bSelectClass.addActionListener(getSelectClassListener());
-		//　関連名
+		// 関連名
 		JButton bAssociationName = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.alignRelationName"));
 		bAssociationName.addActionListener(getAssociationNameActionListener());
+		JButton bAlignRelation = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.alignRelation"));
+		bAlignRelation.addActionListener(getAlignRelationActionListener());
+
 		// 色ピッカー
 		JButton bColorPicker = new JButton(VIEW_BUNDLE.getString("editElementsButtonText.pickUpColor"));
 		bColorPicker.addActionListener(getColorPickerActionListener());
@@ -1141,10 +1448,13 @@ ProjectEventListener
 		fPanel.add(bFlipVertical);
 		fPanel.add(bFlipHorizontal);
 		fPanel.add(bClockwiseRotation90);
+		fPanel.add(bScaleUp);
+		fPanel.add(bScaleDown);
 		fPanel.add(getSeparator());
 		fPanel.add(bSelectClass);
 		fPanel.add(getSeparator());
 		fPanel.add(bAssociationName);
+		fPanel.add(bAlignRelation);
 		fPanel.add(getSeparator());
 		fPanel.add(bColorPicker);
 		fPanel.add(bSyncColor);
